@@ -34,6 +34,9 @@ export const OpenAIStream = async (
   if (OPENAI_API_TYPE === 'azure') {
     url = `${OPENAI_API_HOST}/openai/deployments/${AZURE_DEPLOYMENT_ID}/chat/completions?api-version=${OPENAI_API_VERSION}`;
   }
+
+  console.log("Post request, url=", url);
+
   const res = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
@@ -59,15 +62,19 @@ export const OpenAIStream = async (
       ],
       max_tokens: 1000,
       temperature: temperature,
-      stream: true,
+      stream: false,
     }),
   });
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
+  console.log("response.status: ", res.status);
+  console.log("response: ", res);
+
   if (res.status !== 200) {
     const result = await res.json();
+    console.log("result: ", result)
     if (result.error) {
       throw new OpenAIError(
         result.error.message,
@@ -84,12 +91,16 @@ export const OpenAIStream = async (
     }
   }
 
+  const json = await res.json();
+  console.log("json: ", json);
+  return json;
+
   const stream = new ReadableStream({
     async start(controller) {
       const onParse = (event: ParsedEvent | ReconnectInterval) => {
         if (event.type === 'event') {
           const data = event.data;
-
+	  console.log("event data: ", data)
           try {
             const json = JSON.parse(data);
             if (json.choices[0].finish_reason != null) {
